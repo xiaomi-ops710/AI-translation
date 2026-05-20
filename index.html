@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Smart Translate - Expressive Edition</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="翻訳&AIテスト">
+    <link rel="apple-touch-icon" href="https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsoutlined/translate/default/48px.svg">
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Tailwind CSS & Material Symbols -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    animation: {
+                        'gemini-pulse': 'geminiGrad 6s ease infinite',
+                        'float-up': 'floatUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
+                    },
+                    keyframes: {
+                        geminiGrad: {
+                            '0%, 100%': { 'background-position': '0% 50%' },
+                            '50%': { 'background-position': '100% 50%' },
+                        },
+                        floatUp: {
+                            '0%': { transform: 'translateY(20px) scale(0.95)', opacity: '0' },
+                            '100%': { transform: 'translateY(0) scale(1)', opacity: '1' }
+                        }
+                    },
+                    colors: {
+                        m3: {
+                            primary: '#6750A4',
+                            primaryContainer: '#EADDFF',
+                            surface: '#FEF7FF',
+                            surfaceVariant: '#E7E0EC',
+                            darkSurface: '#141218'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .filled-icon { font-variation-settings: 'FILL' 1; }
+        body {
+            -webkit-tap-highlight-color: transparent;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        /* Custom dynamic gradient background sizing for expressive animation */
+        .animate-gemini {
+            background: linear-gradient(-45deg, #3b82f6, #8b5cf6, #ec4899, #f43f5e, #eab308);
+            background-size: 400% 400%;
+        }
+        /* Scrollbar aesthetics */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #79747E; border-radius: 99px; }
+    </style>
+</head>
+<body class="bg-[#FEF7FF] text-[#1D1B20] dark:bg-[#141218] dark:text-[#E6E1E5] transition-colors duration-300 pb-28 lg:pb-6">
+
+    <!-- Top App Bar -->
+    <header class="sticky top-0 z-40 flex items-center justify-between px-6 py-4 bg-[#FEF7FF]/80 dark:bg-[#141218]/80 backdrop-blur-md border-b border-gray-100 dark:border-neutral-800">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-white shadow-md">
+                <span class="material-symbols-outlined text-2xl">translate</span>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight flex items-center gap-2">
+                    Smart Translate
+                    <span id="network-badge" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-300 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping"></span>Online
+                    </span>
+                </h1>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-1.5">
+            <button id="notification-btn" onclick="requestNotificationPermission()" class="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-600 dark:text-neutral-400 relative transition">
+                <span class="material-symbols-outlined">notifications</span>
+                <span id="noti-dot" class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full hidden"></span>
+            </button>
+            <button onclick="toggleDarkMode()" class="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-600 dark:text-neutral-400 transition">
+                <span id="dark-mode-icon" class="material-symbols-outlined">dark_mode</span>
+            </button>
+            <!-- Settings Action (Open API configuration modal) -->
+            <button onclick="openSettingsModal()" class="p-2.5 rounded-full bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:scale-105 transition">
+                <span class="material-symbols-outlined">settings</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Dynamic Application Grid Layout -->
+    <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Pane Workspace Workspace -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- SECTION 1: TRANSLATOR TAB VIEW -->
+            <section id="view-translate" class="app-view space-y-5">
+                <!-- Expressive Language Swapper -->
+                <div class="flex items-center justify-between bg-[#E7E0EC] dark:bg-[#49454F] p-1.5 rounded-3xl shadow-inner">
+                    <select id="src-lang" class="bg-transparent font-bold px-5 py-2.5 focus:outline-none cursor-pointer text-sm md:text-base text-gray-800 dark:text-neutral-200">
+                        <option value="ja" selected>日本語 (Japanese)</option>
+                        <option value="en">英語 (English)</option>
+                    </select>
+                    
+                    <button onclick="swapLanguages()" class="p-3 bg-[#6750A4] text-white dark:bg-[#D0BCFF] dark:text-[#381E72] rounded-2xl shadow-md hover:rotate-180 transition-transform duration-300 active:scale-90">
+                        <span class="material-symbols-outlined block text-xl">swap_horiz</span>
+                    </button>
+                    
+                    <select id="target-lang" class="bg-transparent font-bold px-5 py-2.5 focus:outline-none cursor-pointer text-sm md:text-base text-gray-800 dark:text-neutral-200">
+                        <option value="en" selected>英語 (English)</option>
+                        <option value="ja">日本語 (Japanese)</option>
+                    </select>
+                </div>
+
+                <!-- Input Text Node Frame -->
+                <div class="bg-white dark:bg-neutral-900 rounded-[32px] p-6 shadow-sm border border-gray-100 dark:border-neutral-800 relative focus-within:ring-2 focus-within:ring-[#6750A4] transition-all">
+                    <textarea id="input-text" rows="4" class="w-full bg-transparent resize-none focus:outline-none text-lg placeholder-gray-400 dark:placeholder-neutral-600 font-medium" placeholder="ここに翻訳したいテキストを入力してください..."></textarea>
+                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-gray-50 dark:border-neutral-800/60">
+                        <div class="flex gap-1">
+                            <button onclick="startVoiceInput()" id="mic-btn" class="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-800 text-[#6750A4] dark:text-[#D0BCFF] transition">
+                                <span class="material-symbols-outlined">mic</span>
+                            </button>
+                            <button onclick="clearInput()" class="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-400 transition">
+                                <span class="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <button onclick="executeTranslation()" class="px-7 py-3 bg-[#6750A4] text-white dark:bg-[#D0BCFF] dark:text-[#381E72] font-bold rounded-2xl shadow-lg hover:opacity-95 transform active:scale-95 transition-all">
+                            翻訳を実行
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Offline Fallback Notification Bar -->
+                <div id="offline-alert" class="hidden bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-200 p-4 rounded-3xl flex items-center gap-3 text-sm animate-float-up">
+                    <span class="material-symbols-outlined text-amber-500 text-2xl">wifi_off</span>
+                    <div>
+                        <span class="font-extrabold block">オフラインローカルモードで動作中</span>
+                        サーバー未接続のため、内蔵の基本辞書データを用いて即座に英日翻訳を行います。
+                    </div>
+                </div>
+
+                <!-- Live Dynamic Output Processing Terminal Card -->
+                <div id="output-card" class="hidden bg-[#EADDFF] dark:bg-[#4F378B] text-[#21005D] dark:text-[#EADDFF] rounded-[32px] p-6 shadow-md space-y-4 animate-float-up">
+                    <div>
+                        <p class="text-[10px] font-extrabold uppercase tracking-widest opacity-60">翻訳結果出力</p>
+                        <p id="output-text" class="text-xl font-bold mt-2 whitespace-pre-wrap leading-relaxed"></p>
+                    </div>
+                    <div class="flex items-center justify-between pt-3 border-t border-purple-300/40 dark:border-purple-800/40">
+                        <div class="flex gap-1.5">
+                            <button onclick="speakOutput()" class="p-2.5 rounded-full bg-white/40 dark:bg-black/20 hover:bg-white/60 transition">
+                                <span class="material-symbols-outlined">volume_up</span>
+                            </button>
+                            <button onclick="copyOutput()" class="p-2.5 rounded-full bg-white/40 dark:bg-black/20 hover:bg-white/60 transition">
+                                <span class="material-symbols-outlined">content_copy</span>
+                            </button>
+                        </div>
+                        <button onclick="toggleSaveCurrent()" id="save-btn" class="p-2.5 rounded-full bg-white/40 dark:bg-black/20 hover:bg-white/60 transition">
+                            <span id="save-icon" class="material-symbols-outlined">bookmark_border</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Gemini Realtime Core Parsing Engine Card -->
+                <div id="details-card" class="hidden bg-white dark:bg-neutral-900 rounded-[32px] p-6 shadow-sm border border-gray-100 dark:border-neutral-800 space-y-4 animate-float-up">
+                    <div class="flex items-center gap-2.5 text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-pink-500 font-black">
+                        <span class="material-symbols-outlined text-blue-500 filled-icon">auto_awesome</span>
+                        <h3 class="text-base font-extrabold">Gemini Pro AI文法・表現分析解説</h3>
+                    </div>
+                    <div class="space-y-4 text-sm text-gray-700 dark:text-neutral-300">
+                        <div class="bg-gray-50 dark:bg-neutral-800/50 p-4 rounded-2xl">
+                            <span class="font-extrabold text-[11px] uppercase tracking-wider px-2 py-0.5 bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 rounded-md">構造・イディオム解説</span>
+                            <p id="details-grammar" class="mt-2 leading-relaxed font-medium"></p>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-neutral-800/50 p-4 rounded-2xl">
+                            <span class="font-extrabold text-[11px] uppercase tracking-wider px-2 py-0.5 bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 rounded-md">実用ネイティブ応用例文</span>
+                            <p id="details-example" class="mt-2 italic leading-relaxed font-medium"></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 2: EIKEN COMPREHENSIVE PRACTICE DRILL SUITE -->
+            <section id="view-test" class="app-view hidden space-y-5">
+                <!-- Settings Dashboard Controller -->
+                <div id="test-setup-card" class="bg-white dark:bg-neutral-900 rounded-[32px] p-6 shadow-sm border border-gray-100 dark:border-neutral-800 space-y-4">
+                    <div class="flex items-center gap-2 text-[#6750A4] dark:text-[#D0BCFF]">
+                        <span class="material-symbols-outlined text-3xl">quiz</span>
+                        <h2 class="text-xl font-black tracking-tight">英検® 難易度別演習ドリル</h2>
+                    </div>
+                    <p class="text-sm text-gray-500 dark:text-neutral-400 font-medium">現在の目標学習レベルに合わせた文法・語彙の四肢択一試験を行います。</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        <div>
+                            <label class="block text-xs font-extrabold text-gray-400 mb-1.5 uppercase tracking-wider">目標難易度 (英検級)</label>
+                            <select id="test-grade" class="w-full bg-gray-50 dark:bg-neutral-800 border border-gray-100 dark:border-neutral-700 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none">
+                                <option value="5">英検 5級 (中学初級レベル)</option>
+                                <option value="4">英検 4級 (中学中級レベル)</option>
+                                <option value="3">英検 3級 (中学卒業レベル)</option>
+                                <option value="2">英検 2級 (高校卒業・社会人レベル)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-extrabold text-gray-400 mb-1.5 uppercase tracking-wider">出題問題数</label>
+                            <select id="test-question-count" class="w-full bg-gray-50 dark:bg-neutral-800 border border-gray-100 dark:border-neutral-700 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none">
+                                <option value="5">5 問</option>
+                                <option value="10" selected>10 問</option>
+                                <option value="15">15 問</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="startEnglishTest()" class="w-full py-4 bg-gradient-to-r from-[#6750A4] to-indigo-600 text-white font-bold rounded-2xl shadow-md hover:opacity-95 transition mt-2">
+                        演習テストを生成して開始
+                    </button>
+                </div>
+
+                <!-- Live Test Active Container Card -->
+                <div id="test-active-card" class="hidden bg-white dark:bg-neutral-900 rounded-[32px] p-6 shadow-sm border border-gray-100 dark:border-neutral-800 space-y-6">
+                    <div class="flex justify-between items-center border-b pb-4 border-gray-50 dark:border-neutral-800">
+                        <span id="test-progress-text" class="text-xs font-extrabold text-[#6750A4] dark:text-[#D0BCFF] bg-purple-50 dark:bg-purple-950/60 px-4 py-1.5 rounded-full">Question 1 of 10</span>
+                        <span id="test-badge-grade" class="text-xs bg-gray-100 dark:bg-neutral-800 px-4 py-1.5 rounded-full font-bold">英検3級</span>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <p class="text-xs font-extrabold text-gray-400 uppercase tracking-widest">問題文 (空欄に該当する正しい語句を選択してください)</p>
+                        <h3 id="test-question-text" class="text-xl font-bold text-gray-800 dark:text-neutral-100 leading-relaxed"></h3>
+                    </div>
+
+                    <div id="test-options-container" class="grid grid-cols-1 gap-3">
+                        <!-- Selectors Injected Here programmatically -->
+                    </div>
+
+                    <div class="flex justify-between items-center pt-3 border-t border-gray-50 dark:border-neutral-800">
+                        <button onclick="quitTest()" class="text-sm text-gray-400 hover:text-red-500 font-bold transition">中断終了</button>
+                        <button id="test-next-btn" onclick="goToNextQuestion()" disabled class="px-7 py-3 bg-gray-200 text-gray-400 dark:bg-neutral-800 dark:text-neutral-600 font-bold rounded-2xl shadow transition">
+                            次の問題へ
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Evaluation Report Screen View -->
+                <div id="test-results-card" class="hidden bg-white dark:bg-neutral-900 rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-neutral-800 text-center space-y-6 animate-float-up">
+                    <div class="inline-flex p-5 bg-purple-50 dark:bg-purple-950/40 rounded-full text-[#6750A4] dark:text-[#D0BCFF]">
+                        <span class="material-symbols-outlined text-5xl filled-icon">emoji_events</span>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-black">演習テスト採点結果</h2>
+                        <p class="text-sm text-gray-400 font-medium mt-1">お疲れ様でした！あなたの解答スコア詳細データです。</p>
+                    </div>
+
+                    <div class="max-w-xs mx-auto bg-gray-50 dark:bg-neutral-800/80 p-6 rounded-2xl border border-gray-100 dark:border-neutral-700">
+                        <span id="test-final-score" class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-500">8 / 10</span>
+                        <p id="test-evaluation-text" class="text-sm font-bold mt-3 text-gray-700 dark:text-neutral-300"></p>
+                    </div>
+
+                    <button onclick="resetToTestSetup()" class="px-8 py-3.5 bg-[#6750A4] text-white dark:bg-[#D0BCFF] dark:text-[#381E72] font-bold rounded-2xl shadow-md hover:opacity-95 transition">
+                        テストダッシュボードへ戻る
+                    </button>
+                </div>
+            </section>
+        </div>
+
+        <!-- Right Side Panel Component Framework (History logs) -->
+        <div class="lg:col-span-4 space-y-6">
+            <div class="bg-white dark:bg-neutral-900 rounded-[32px] p-6 shadow-sm border border-gray-100 dark:border-neutral-800 h-[calc(100vh-140px)] overflow-y-auto hidden lg:block">
+                <div class="flex border-b border-gray-100 dark:border-neutral-800 mb-4">
+                    <button onclick="switchSidebarTab('history')" id="tab-btn-history" class="flex-1 pb-3 font-bold text-sm text-[#6750A4] dark:text-[#D0BCFF] border-b-2 border-[#6750A4]">翻訳履歴</button>
+                    <button onclick="switchSidebarTab('saved')" id="tab-btn-saved" class="flex-1 pb-3 font-bold text-sm text-gray-400">ブックマーク</button>
+                </div>
+                <div id="sidebar-list-content" class="space-y-3"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- UI ELEMENT 1: MATERIAL 3 EXPRESSIVE GRADIENT AI FLOATING FAB CHAT TRIGGER -->
+    <div class="fixed bottom-24 lg:bottom-8 right-6 z-40">
+        <button onclick="openExpressiveChat()" class="animate-gemini animate-gemini-pulse flex items-center gap-2.5 px-6 py-4 rounded-3xl text-white font-extrabold shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 group">
+            <span class="material-symbols-outlined filled-icon group-hover:rotate-12 transition-transform">auto_awesome</span>
+            <span class="tracking-tight text-sm md:text-base">AIチャット</span>
+        </button>
+    </div>
+
+    <!-- UI ELEMENT 2: API CONFIGURATION MODAL DIALOG SHEET -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-neutral-900 w-full max-w-md rounded-[32px] p-6 space-y-4 shadow-2xl animate-float-up">
+            <div class="flex justify-between items-center border-b pb-3 dark:border-neutral-800">
+                <h3 class="text-lg font-black flex items-center gap-2"><span class="material-symbols-outlined text-purple-600">key</span> Gemini APIキー設定</h3>
+                <button onclick="closeSettingsModal()" class="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-800"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <p class="text-xs text-gray-500 leading-relaxed font-medium">GitHub Pagesで安全に動作させるため、APIキーはサーバーではなくあなたのブラウザ(LocalStorage)にのみセキュアに直接保存されます。</p>
+            <div>
+                <label class="block text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1">Google AI Studio API Key</label>
+                <input id="api-key-input" type="password" class="w-full bg-gray-50 dark:bg-neutral-800 border border-gray-100 dark:border-neutral-700 rounded-xl px-4 py-3 text-sm focus:outline-none tracking-widest" placeholder="AIzaSy...">
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeSettingsModal()" class="px-5 py-2.5 text-sm font-bold text-gray-400 hover:text-gray-600">キャンセル</button>
+                <button onclick="saveApiKey()" class="px-6 py-2.5 text-sm bg-[#6750A4] text-white dark:bg-[#D0BCFF] dark:text-[#381E72] font-bold rounded-xl shadow-md">キーを保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- UI ELEMENT 3: EXPRESSIVE BOTTOM CHAT SHEET COMPONENT LAYERING -->
+    <div id="chat-modal" class="fixed inset-0 bg-black/60 z-50 hidden items-end justify-center backdrop-blur-sm">
+        <div class="bg-white dark:bg-neutral-900 w-full max-w-2xl h-[85vh] rounded-t-[36px] p-6 flex flex-col shadow-2xl animate-float-up">
+            <div class="flex justify-between items-center pb-4 border-b dark:border-neutral-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl animate-gemini animate-gemini-pulse flex items-center justify-center text-white">
+                        <span class="material-symbols-outlined filled-icon text-xl">smart_toy</span>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-base">Gemini 英会話パートナー</h3>
+                        <p id="chat-status" class="text-xs font-semibold text-green-500">Ready (API Connected)</p>
+                    </div>
+                </div>
+                <button onclick="closeExpressiveChat()" class="p-2 bg-gray-100 dark:bg-neutral-800 rounded-full transition"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            
+            <!-- Chat Timeline -->
+            <div id="chat-timeline" class="flex-1 overflow-y-auto my-4 space-y-4 pr-1">
+                <div class="flex gap-2.5 items-start max-w-[85%]">
+                    <div class="bg-gray-100 dark:bg-neutral-800 p-4 rounded-3xl rounded-tl-none text-sm font-medium leading-relaxed text-gray-800 dark:text-neutral-200">
+                        Hello! I am your AI partner powered by Gemini. Let's practice English together! Ask me anything, or tell me about your day. 😊
+                    </div>
+                </div>
+            </div>
+
+            <!-- Typing Action Box -->
+            <div class="flex items-center gap-2 pt-3 border-t border-gray-100 dark:border-neutral-800">
+                <input id="chat-input" type="text" class="flex-1 bg-gray-50 dark:bg-neutral-800 rounded-2xl px-5 py-3.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#6750A4]" placeholder="英語で自由にメッセージを入力...">
+                <button onclick="sendChatMessage()" class="p-3.5 bg-[#6750A4] text-white dark:bg-[#D0BCFF] dark:text-[#381E72] rounded-2xl shadow-md hover:scale-105 active:scale-95 transition">
+                    <span class="material-symbols-outlined block text-lg">send</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Hub Bar (Material 3 Adaptive Mobile layout specification) -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-[#FEF7FF]/90 dark:bg-[#141218]/90 backdrop-blur-md border-t border-gray-100 dark:border-neutral-800 px-6 py-3 flex justify-around items-center z-30 lg:hidden">
+        <button onclick="switchMainView('translate')" id="nav-btn-translate" class="flex flex-col items-center gap-1 text-[#6750A4] dark:text-[#D0BCFF]">
+            <div class="px-6 py-1.5 bg-[#EADDFF] dark:bg-[#4F378B] rounded-2xl transition">
+                <span class="material-symbols-outlined block">translate</span>
+            </div>
+            <span class="text-[11px] font-bold">翻訳</span>
+        </button>
+        <button onclick="switchMainView('test')" id="nav-btn-test" class="flex flex-col items-center gap-1 text-gray-400">
+            <div class="px-6 py-1.5 rounded-2xl transition">
+                <span class="material-symbols-outlined block">quiz</span>
+            </div>
+            <span class="text-[11px] font-bold">英語テスト</span>
+        </button>
+        <button onclick="openMobileHistoryModal()" class="flex flex-col items-center gap-1 text-gray-400">
+            <div class="px-6 py-1.5 rounded-2xl transition">
+                <span class="material-symbols-outlined block">history</span>
+            </div>
+            <span class="text-[11px] font-bold">履歴/保存</span>
+        </button>
+    </nav>
+
+    <!-- Mobile Screen Overlayer Sheet Modal -->
+    <div id="mobile-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex-end justify-center items-end backdrop-blur-xs">
+        <div class="bg-white dark:bg-neutral-900 w-full max-h-[75vh] rounded-t-[32px] p-6 overflow-y-auto space-y-4">
+            <div class="flex justify-between items-center border-b pb-3 dark:border-neutral-800">
+                <div class="flex gap-4">
+                    <button onclick="switchSidebarTab('history')" id="modal-tab-history" class="font-extrabold text-base text-[#6750A4] dark:text-[#D0BCFF]">履歴</button>
+                    <button onclick="switchSidebarTab('saved')" id="modal-tab-saved" class="font-extrabold text-base text-gray-400">保存済み</button>
+                </div>
+                <button onclick="closeMobileHistoryModal()" class="p-2 rounded-full bg-gray-50 dark:bg-neutral-800"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div id="modal-list-content" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <!-- Main Logic Engine System Script Block -->
+    <script>
+        let historyData = JSON.parse(localStorage.getItem('tr_history')) || [];
+        let savedData = JSON.parse(localStorage.getItem('tr_saved')) || [];
+        let currentActiveSidebarTab = 'history';
+        let currentTranslatingData = null;
+
+        // Static Offline Mapping Repository Dictionary
+        const offlineDictionary = {
+            "ja-en": {
+                "こんにちは": { out: "Hello", grammar: "時間帯を問わず使用可能な極めて標準的な挨拶表現です。", ex: "Hello! How can I help you today?" },
+                "ありがとう": { out: "Thank you", grammar: "フォーマル・カジュアル双方で最も汎用性の高い感謝表現表現。", ex: "Thank you for your supportive assistance." },
+                "さようなら": { out: "Goodbye", grammar: "一般的な別れの挨拶。親しい仲では Bye や See you が好まれます。", ex: "Goodbye, hope to see you again." }
+            },
+            "en-ja": {
+                "hello": { out: "こんにちは", grammar: "標準的な挨拶文。親しい相手への「やあ」には Hi や Hey が適切。", ex: "Hello, nice to meet you." },
+                "thank you": { out: "ありがとうございます", grammar: "感謝を届ける基本のフレーズ。日常的に多用されます。", ex: "Thank you for the beautiful present." }
+            }
+        };
+
+        const eikenQuestionPool = {
+            "5": [
+                { q: "This is my ( ) book.", a: ["favorite", "favor", "nicely", "well"], c: 0, text: "favorite (お気に入りの)" },
+                { q: "Where ( ) you live?", a: ["is", "do", "does", "are"], c: 1, text: "do (一般動詞の疑問文)" }
+            ],
+            "4": [
+                { q: "He is good ( ) playing tennis.", a: ["at", "on", "in", "for"], c: 0, text: "be good at (〜が得意である)" },
+                { q: "Yesterday, she ( ) a letter.", a: ["write", "wrote", "written", "writes"], c: 1, text: "wrote (過去形)" }
+            ],
+            "3": [
+                { q: "I have lived in Tokyo ( ) three years.", a: ["since", "for", "during", "while"], c: 1, text: "for + 期間 (現在完了形継続)" },
+                { q: "The book ( ) written by a famous doctor.", a: ["was", "is", "did", "has"], c: 0, text: "受動態 (was + 過去分詞)" }
+            ],
+            "2": [
+                { q: "Would you mind ( ) the window?", a: ["to open", "open", "opening", "opened"], c: 2, text: "would you mind -ing (〜していただけますか)" },
+                { q: "He speaks English as if he ( ) a native speaker.", a: ["is", "was", "were", "has been"], c: 2, text: "as if + 仮定法過去(were)" }
+            ]
+        };
+
+        const notificationTriviaPool = [
+            { title: "💡 文法豆知識", body: "look forward toの「to」は前置詞！後ろには動名詞(-ing)が来ます。" },
+            { title: "📝 演習ドリルリマインダー", body: "英語の習得は日々の反復がすべて。短時間の英検演習テストに挑戦しよう！" }
+        ];
+
+        let activeTestQuestions = [];
+        let currentQuestionIdx = 0;
+        let activeScore = 0;
+        let selectedOptionIdx = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initNetworkStatusCheck();
+            initDarkMode();
+            renderSidebar();
+            registerServiceWorker();
+            setupAutomaticRandomNotifications();
+            
+            // Check if API key exists on initial launch
+            if (!localStorage.getItem('user_gemini_api_key')) {
+                setTimeout(() => openSettingsModal(), 800);
+            }
+        });
+
+        function initNetworkStatusCheck() {
+            function updateStatus() {
+                const badge = document.getElementById('network-badge');
+                const offlineAlert = document.getElementById('offline-alert');
+                if (navigator.onLine) {
+                    badge.className = "text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-300 flex items-center gap-1";
+                    badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping"></span>Online`;
+                    offlineAlert.classList.add('hidden');
+                } else {
+                    badge.className = "text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 flex items-center gap-1";
+                    badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Offline`;
+                    if(!document.getElementById('view-translate').classList.contains('hidden')) {
+                        offlineAlert.classList.remove('hidden');
+                    }
+                }
+            }
+            window.addEventListener('online', updateStatus);
+            window.addEventListener('offline', updateStatus);
+            updateStatus();
+        }
+
+        function initDarkMode() {
+            if (localStorage.getItem('dark-mode') === 'true' || (!('dark-mode' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                document.getElementById('dark-mode-icon').innerText = 'light_mode';
+            }
+        }
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('dark-mode', isDark);
+            document.getElementById('dark-mode-icon').innerText = isDark ? 'light_mode' : 'dark_mode';
+        }
+
+        function openSettingsModal() {
+            document.getElementById('api-key-input').value = localStorage.getItem('user_gemini_api_key') || '';
+            document.getElementById('settings-modal').classList.remove('hidden');
+            document.getElementById('settings-modal').classList.add('flex');
+        }
+        function closeSettingsModal() {
+            document.getElementById('settings-modal').classList.add('hidden');
+            document.getElementById('settings-modal').classList.remove('flex');
+        }
+        function saveApiKey() {
+            const val = document.getElementById('api-key-input').value.trim();
+            if (val) {
+                localStorage.setItem('user_gemini_api_key', val);
+                alert("APIキーをLocalStorageへ安全に記録しました。");
+                closeSettingsModal();
+            } else {
+                localStorage.removeItem('user_gemini_api_key');
+                alert("キーがクリアされました。オンラインAI機能は動作しなくなります。");
+            }
+        }
+
+        function openExpressiveChat() {
+            if(!localStorage.getItem('user_gemini_api_key') && navigator.onLine) {
+                alert("AIチャットを起動するにはGemini APIキーの設定が必要です。");
+                openSettingsModal();
+                return;
+            }
+            document.getElementById('chat-modal').classList.remove('hidden');
+            document.getElementById('chat-modal').classList.add('flex');
+        }
+        function closeExpressiveChat() {
+            document.getElementById('chat-modal').classList.add('hidden');
+            document.getElementById('chat-modal').classList.remove('flex');
+        }
+
+        // Direct Browser Core Access Pipeline for Google Gemini Pro API
+        async function callGeminiLiveEngine(promptPayload) {
+            const key = localStorage.getItem('user_gemini_api_key');
+            if(!key) return null;
+
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: promptPayload }] }]
+                    })
+                });
+                const data = await response.json();
+                return data.candidates[0].content.parts[0].text;
+            } catch (err) {
+                console.error("Gemini Core Fetch Failure:", err);
+                return null;
+            }
+        }
+
+        async function executeTranslation() {
+            const text = document.getElementById('input-text').value.trim();
+            const src = document.getElementById('src-lang').value;
+            const target = document.getElementById('target-lang').value;
+            if(!text) return;
+
+            let finalTranslation = "";
+            let explanation = "";
+            let practicalExample = "";
+
+            if (!navigator.onLine) {
+                // Strict Offline Repository Lookup Match
+                const pair = `${src}-${target}`;
+                const matched = offlineDictionary[pair]?.[text.toLowerCase()];
+                if(matched) {
+                    finalTranslation = matched.out;
+                    explanation = `[ローカルオフライン辞書照合完了] ${matched.grammar}`;
+                    practicalExample = matched.ex;
+                } else {
+                    finalTranslation = `[オフライン未登録フレーズ] ${text}`;
+                    explanation = "現在オフライン環境です。このフレーズの解説を生成するにはインターネット接続およびGemini APIが必要です。";
+                    practicalExample = "N/A";
+                }
+                updateUIElements(finalTranslation, explanation, practicalExample, src, target, text);
+            } else {
+                // Live Gemini Online Synthesis Logic Execution
+                const apiKeyExists = localStorage.getItem('user_gemini_api_key');
+                if(!apiKeyExists) {
+                    alert("オンライン翻訳エンジンを実行するには、右上の設定からGeminiのAPIキーを入力してください。");
+                    openSettingsModal();
+                    return;
+                }
+
+                // Unified Structured JSON Prompt instruction
+                const structurePrompt = `You are an expert English-Japanese translation assistant. Translate the following text from "${src}" to "${target}": "${text}". 
+                Provide the output strictly in this markdown structural layout:
+                ===TRANSLATION===
+                [Your concise translation here]
+                ===GRAMMAR===
+                [A clear grammar breakdown/explanation in Japanese]
+                ===EXAMPLE===
+                [One natural alternative or related example sentence in the target language with its Japanese translation]`;
+
+                document.getElementById('output-text').innerText = "Gemini AIが思考・解析中...";
+                document.getElementById('output-card').classList.remove('hidden');
+
+                const rawAiResult = await callGeminiLiveEngine(structurePrompt);
+                if(rawAiResult) {
+                    try {
+                        finalTranslation = rawAiResult.split('===TRANSLATION===')[1].split('===GRAMMAR===')[0].trim();
+                        explanation = rawAiResult.split('===GRAMMAR===')[1].split('===EXAMPLE===')[0].trim();
+                        practicalExample = rawAiResult.split('===EXAMPLE===')[1].trim();
+                    } catch(e) {
+                        finalTranslation = rawAiResult;
+                        explanation = "構造の完全解析に失敗しましたが、AI出力をそのまま描画しています。";
+                        practicalExample = "N/A";
+                    }
+                } else {
+                    finalTranslation = "APIエラーまたはキーが無効です。";
+                    explanation = "Google AI StudioのダッシュボードでAPIキーが有効であることを確認してください。";
+                }
+                updateUIElements(finalTranslation, explanation, practicalExample, src, target, text);
+            }
+        }
+
+        function updateUIElements(out, gram, ex, src, target, srcTxt) {
+            document.getElementById('output-text').innerText = out;
+            document.getElementById('details-grammar').innerText = gram;
+            document.getElementById('details-example').innerText = ex;
+            
+            document.getElementById('output-card').classList.remove('hidden');
+            document.getElementById('details-card').classList.remove('hidden');
+
+            currentTranslatingData = { id: Date.now(), srcLang: src, targetLang: target, srcText: srcTxt, translatedText: out };
+            historyData.unshift(currentTranslatingData);
+            localStorage.setItem('tr_history', JSON.stringify(historyData));
+            document.getElementById('save-icon').innerText = 'bookmark_border';
+            renderSidebar();
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const userMsg = input.value.trim();
+            if(!userMsg) return;
+
+            const tl = document.getElementById('chat-timeline');
+            const uB = document.createElement('div');
+            uB.className = "flex justify-end max-w-[85%] ml-auto";
+            uB.innerHTML = `<div class="bg-[#6750A4] text-white dark:bg-[#D0BCFF] dark:text-[#381E72] p-4 rounded-3xl rounded-tr-none text-sm font-medium shadow-sm">${userMsg}</div>`;
+            tl.appendChild(uB);
+            input.value = "";
+            tl.scrollTop = tl.scrollHeight;
+
+            const status = document.getElementById('chat-status');
+            status.innerText = "Gemini is typing...";
+
+            let systemReply = "現在オフラインのためAIが応答できません。";
+            if(navigator.onLine) {
+                const aiPrompt = `You are a friendly, encouraging English conversation teacher named Emma. Reply to the user's message shortly in natural conversation English. User said: "${userMsg}"`;
+                const response = await callGeminiLiveEngine(aiPrompt);
+                if(response) systemReply = response;
+                else systemReply = "APIキーを確認するか、接続を再試行してください。";
+            }
+
+            status.innerText = "Ready (API Connected)";
+            const aB = document.createElement('div');
+            aB.className = "flex gap-2.5 items-start max-w-[85%] animate-float-up";
+            aB.innerHTML = `<div class="bg-gray-100 dark:bg-neutral-800 p-4 rounded-3xl rounded-tl-none text-sm font-medium text-gray-800 dark:text-neutral-200 leading-relaxed">${systemReply}</div>`;
+            tl.appendChild(aB);
+            tl.scrollTop = tl.scrollHeight;
+        }
+
+        function switchMainView(view) {
+            document.querySelectorAll('.app-view').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+            
+            const items = ['translate', 'test'];
+            items.forEach(i => {
+                const btn = document.getElementById(`nav-btn-${i}`);
+                if(i === view) {
+                    btn.className = "flex flex-col items-center gap-1 text-[#6750A4] dark:text-[#D0BCFF]";
+                    btn.querySelector('div').classList.add('bg-[#EADDFF]', 'dark:bg-[#4F378B]');
+                } else {
+                    btn.className = "flex flex-col items-center gap-1 text-gray-400";
+                    btn.querySelector('div').className = "px-6 py-1.5 rounded-2xl";
+                }
+            });
+        }
+
+        function startEnglishTest() {
+            const grade = document.getElementById('test-grade').value;
+            const count = parseInt(document.getElementById('test-question-count').value);
+            const pool = eikenQuestionPool[grade] || eikenQuestionPool["5"];
+            
+            activeTestQuestions = [...pool].sort(() => 0.5 - Math.random()).slice(0, count);
+            currentQuestionIdx = 0;
+            activeScore = 0;
+
+            document.getElementById('test-badge-grade').innerText = `英検 ${grade}級`;
+            document.getElementById('test-setup-card').classList.add('hidden');
+            document.getElementById('test-active-card').classList.remove('hidden');
+            document.getElementById('test-results-card').classList.add('hidden');
+            
+            renderTestQuestion();
+        }
+
+        function renderTestQuestion() {
+            selectedOptionIdx = null;
+            const nextBtn = document.getElementById('test-next-btn');
+            nextBtn.disabled = true;
+            nextBtn.className = "px-7 py-3 bg-gray-200 text-gray-400 dark:bg-neutral-800 dark:text-neutral-600 font-bold rounded-2xl shadow";
+
+            const currentQ = activeTestQuestions[currentQuestionIdx];
+            document.getElementById('test-progress-text').innerText = `Question ${currentQuestionIdx + 1} of ${activeTestQuestions.length}`;
+            document.getElementById('test-question-text').innerText = currentQ.q;
+            
+            const container = document.getElementById('test-options-container');
+            container.innerHTML = "";
+
+            currentQ.a.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-4 rounded-2xl border-2 border-gray-100 dark:border-neutral-800/80 hover:bg-purple-50 dark:hover:bg-neutral-800/50 transition flex items-center justify-between text-sm md:text-base font-medium";
+                btn.id = `opt-btn-${idx}`;
+                btn.onclick = () => {
+                    selectedOptionIdx = idx;
+                    currentQ.a.forEach((_, i) => {
+                        document.getElementById(`opt-btn-${i}`).className = (i === idx) ? "w-full text-left p-4 rounded-2xl border-2 border-[#6750A4] bg-purple-50 dark:bg-purple-950/40 flex items-center justify-between text-sm md:text-base font-bold text-[#6750A4] dark:text-[#D0BCFF]" : "w-full text-left p-4 rounded-2xl border-2 border-gray-100 dark:border-neutral-800/80 flex items-center justify-between text-sm md:text-base font-medium";
+                    });
+                    nextBtn.disabled = false;
+                    nextBtn.className = "px-7 py-3 bg-[#6750A4] text-white dark:bg-[#D0BCFF] dark:text-[#381E72] font-bold rounded-2xl shadow-md transition";
+                };
+                btn.innerHTML = `<span>${idx + 1}. &nbsp;${opt}</span>`;
+                container.appendChild(btn);
+            });
+        }
+
+        function goToNextQuestion() {
+            if(selectedOptionIdx === activeTestQuestions[currentQuestionIdx].c) activeScore++;
+            currentQuestionIdx++;
+            if(currentQuestionIdx < activeTestQuestions.length) renderTestQuestion();
+            else {
+                document.getElementById('test-active-card').classList.add('hidden');
+                document.getElementById('test-results-card').classList.remove('hidden');
+                document.getElementById('test-final-score').innerText = `${activeScore} / ${activeTestQuestions.length}`;
+                document.getElementById('test-evaluation-text').innerText = (activeScore / activeTestQuestions.length >= 0.7) ? "素晴らしい実力です！この調子で上の級を目指しましょう！🎉" : "復習をして、もう一度挑戦してみましょう！💪";
+            }
+        }
+
+        function quitTest() { if(confirm("テストを中断しますか？")) resetToTestSetup(); }
+        function resetToTestSetup() {
+            document.getElementById('test-setup-card').classList.remove('hidden');
+            document.getElementById('test-active-card').classList.add('hidden');
+            document.getElementById('test-results-card').classList.add('hidden');
+        }
+        function swapLanguages() {
+            const s = document.getElementById('src-lang'); const t = document.getElementById('target-lang');
+            const tmp = s.value; s.value = t.value; t.value = tmp;
+        }
+        function clearInput() {
+            document.getElementById('input-text').value = "";
+            document.getElementById('output-card').classList.add('hidden');
+            document.getElementById('details-card').classList.add('hidden');
+        }
+        function switchSidebarTab(t) { currentActiveSidebarTab = t; renderSidebar(); }
+        function openMobileHistoryModal() { document.getElementById('mobile-modal').classList.remove('hidden'); document.getElementById('mobile-modal').classList.add('flex'); }
+        function closeMobileHistoryModal() { document.getElementById('mobile-modal').classList.add('hidden'); }
+        function renderSidebar() {
+            const arr = currentActiveSidebarTab === 'history' ? historyData : savedData;
+            let html = arr.length ? "" : "<div class='text-center p-6 text-gray-400 text-sm'>履歴がありません</div>";
+            arr.forEach(i => {
+                html += `<div class='p-3 bg-gray-50 dark:bg-neutral-800 rounded-xl mb-2 text-xs border border-gray-100 dark:border-neutral-700'>
+                    <div class='font-bold text-purple-600 dark:text-purple-300 uppercase mb-1'>${i.srcLang} ➔ ${i.targetLang}</div>
+                    <div class='truncate text-gray-500'>${i.srcText}</div>
+                    <div class='truncate font-bold text-gray-800 dark:text-neutral-200 mt-0.5'>${i.translatedText}</div>
+                </div>`;
+            });
+            document.getElementById('sidebar-list-content').innerHTML = html;
+            document.getElementById('modal-list-content').innerHTML = html;
+        }
+
+        function requestNotificationPermission() {
+            if ('Notification' in window) {
+                Notification.requestPermission().then(p => {
+                    if(p === 'granted') {
+                        document.getElementById('noti-dot').classList.remove('hidden');
+                        triggerNotification("通知連携の成功", "英語学習リマインダーの受信設定が完了しました。");
+                    }
+                });
+            }
+        }
+        function triggerNotification(title, body) {
+            if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+                navigator.serviceWorker.ready.then(reg => {
+                    reg.showNotification(title, { body: body, icon: 'https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsoutlined/translate/default/48px.svg' });
+                });
+            }
+        }
+        function setupAutomaticRandomNotifications() {
+            setInterval(() => {
+                if (Notification.permission === 'granted') {
+                    const r = notificationTriviaPool[Math.floor(Math.random() * notificationTriviaPool.length)];
+                    triggerNotification(r.title, r.body);
+                }
+            }, 60000);
+        }
+        function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.error(err));
+            }
+        }
+    </script>
+</body>
+</html>
